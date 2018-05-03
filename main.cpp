@@ -4,13 +4,14 @@
 #include <string>
 #include <sstream>
 #include <assert.h>
-#include "Constants.h"
+#include "Constants.hpp"
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 
 #define OBJ_ARRAY_CAPACITY 3
+#define PHYS_OBJ_ARRAY_CAPACITY 1
 #define DIMENSION_SCREEN_X 680
 #define DIMENSION_SCREEN_Y 480
 
@@ -37,15 +38,6 @@ static bool clamped_on_text = false;
 //Линейные размеры карты
 const int HEIGHT_MAP_1 = 25;
 const int WIDHT_MAP_1 = 40;
-
-// ex - пример
-
-//Прототипы
-int CreateMainWindow(sf::RenderWindow &window, sf::Texture &texture, sf::Sprite &img_sprite, sf::Font &font, sf::Text &text, sf::Music &music);
-int LaunchMainWindow(sf::RenderWindow &window, sf::Text &text, const sf::Event &event);
-int CreateRun(sf::Font &font, sf::Text &text);
-void view_treatment(float X, float Y, float wight, float height, sf::View &view);
-void zoom_treatment(int ZoomValue, sf::View &view);
 
 class map
 {
@@ -112,15 +104,62 @@ map::~map()
 //Обработчики абсолютно идентичны, заисключением того, что в конструкторе присваиваются различные
 //начальные значения переменным
 
-class GameLogicObj;
-class GameObject;
 class PhysicObj;
 class GraphObj;
-class IncludeFilesObj;
+
+class PhysicObj
+{
+protected:
+	float X, Y;
+public:
+	PhysicObj(float X_, float Y_)
+	{
+		X = X_;//ph
+		Y = Y_;//ph
+	}
+	PhysicObj()
+	{}
+	//Обновление физики
+	//special functions
+	// Сеттеры и геттеры
+	float get_X()
+	{
+		//X = sprite.getPosition().x;
+		return X;
+	}
+	float get_Y()
+	{
+		//Y = sprite.getPosition().y;
+		return Y;
+	}
+	void set_X(float X_)
+	{
+		X = X_;
+	}
+	void set_Y(float Y_)
+	{
+		Y = Y_;
+	}
+};
+
+class PhysicCount
+{
+public:
+	PhysicObj * phys_obj_array[PHYS_OBJ_ARRAY_CAPACITY];
+	//Подсчет физики:
+	void physic_count(float time, map &Map)
+	{
+		//do something
+	}
+};
 
 class GraphObj
 {
 protected:
+	PhysicObj * phys;
+	//Все, что нужно для прорисовки
+	bool life;
+	int HP;
 	double coeff; // CurrentFrame += Coeff * time;
 	float current_frame;
 	float speed;
@@ -133,8 +172,24 @@ protected:
 	sf::Color nature_color_sprite;
 	float current_frame_attack;
 	int interrapted;
+
+	std::string file_name;
+	float wight, height;
+	int number_of_image;
+
+	sf::Image image;
+	sf::Texture texture;
+	sf::Sprite sprite;
+
+	sf::Image image_attack;
+	sf::Texture texture_attack;
+	sf::Sprite sprite_attack;
+
+	std::string file_name_attack;
+	float wight_attack, height_attack;
+	int number_of_attack_image;
 public:
-	GraphObj(double coeff_, double coeff_attack_)
+	GraphObj(std::string file_name_, std::string file_name_attack_, float X_, float Y_, float wight_, float height_, float wight_attack_, float height_attack_, int number_of_image_, int number_of_attack_image_, double coeff_, double coeff_attack_)
 	{
 		//gr -в конструктор графики, ph -физики, log -логики, in -включаемых файлов,pl -игрока, en -врага, ch -персонажа; 
 		speed = 0;//gr
@@ -144,14 +199,53 @@ public:
 		hero_direction = 3;//gr		
 		coeff = coeff_;//gr
 		current_frame = 0;//gr
+
+		HP = 100;//log
+		life = true;//log
+
+		wight = wight_;
+		height = height_;
+		wight_attack = wight_attack_;
+		height_attack = height_attack_;
+		number_of_image = number_of_image_;
+		number_of_attack_image = number_of_attack_image_;
+		//Uploading a character picture //in
+		file_name_attack = file_name_attack_;//in
+		file_name = file_name_;//in
+							   //in
+		if (image_attack.loadFromFile(file_name_attack_) == false)
+			assert(!"Class Character is crashed(loadFromFile image_attack)");
+
+		if (texture_attack.loadFromImage(image_attack) == false)
+			assert(!"Class Character is crashed(loadFromImage texture_attack)");
+
+		if (image.loadFromFile(file_name_) == false)
+			assert(!"Class ObjectStatic is crashed(loadFromFile image)");
+
+		if (texture.loadFromImage(image) == false)
+			assert(!"Class ObjectStatic is crashed(loadFromImage texture)");
+
+		sprite.setPosition(X_, Y_);
+		sprite.setTextureRect(sf::IntRect(0, 0, wight_, height_));
+
+		sprite_attack.setPosition(X_, Y_);
+		sprite_attack.setTextureRect(sf::IntRect(0, 0, wight_, height_));
 	}
 	GraphObj()
 	{}
 
-	void update_graph_gen(float time, GameObject * game_obj_array[], map &Map);
-	virtual void update_graph_spec(float time, GameObject * game_obj_array[], map &Map);
-	void update_graph(float time, GameObject * game_obj_array[], map &Map);
+	virtual void update_graph(float time, GraphObj *graph_obj_array[], map &Map)
+	{}
 	// Сеттеры и геттеры
+
+	PhysicObj *get_phys()
+	{
+		return phys;
+	}
+	void set_phys(PhysicObj *phys_)
+	{
+		phys = phys_;
+	}
 
 	float get_speed()
 	{
@@ -177,55 +271,30 @@ public:
 	{
 		hero_direction = hero_direction_;
 	}
-};
-
-class IncludeFilesObj
-{
-protected:
-	std::string file_name;
-	float wight, height;
-	int number_of_image;
-
-	sf::Image image;
-	sf::Texture texture;
-	sf::Sprite sprite;
-
-	sf::Image image_attack;
-	sf::Texture texture_attack;
-	sf::Sprite sprite_attack;
-
-	std::string file_name_attack;
-	float wight_attack, height_attack;
-	int number_of_attack_image;
-public:
-	IncludeFilesObj(std::string file_name_, std::string file_name_attack_, float wight_, float height_, float wight_attack_, float height_attack_, int number_of_image_, int number_of_attack_image_)
+	int get_HP()
 	{
-		wight = wight_;
-		height = height_;
-		wight_attack = wight_attack_;
-		height_attack = height_attack_;
-		number_of_image = number_of_image_;
-		number_of_attack_image = number_of_attack_image_;
-		//Uploading a character picture //in
-		file_name_attack = file_name_attack_;//in
-		file_name = file_name_;//in
-							   //in
-		if (image_attack.loadFromFile(file_name_attack_) == false)
-			assert(!"Class Character is crashed(loadFromFile image_attack)");
-
-		if (texture_attack.loadFromImage(image_attack) == false)
-			assert(!"Class Character is crashed(loadFromImage texture_attack)");
-
-		if (image.loadFromFile(file_name_) == false)
-			assert(!"Class ObjectStatic is crashed(loadFromFile image)");
-
-		if (texture.loadFromImage(image) == false)
-			assert(!"Class ObjectStatic is crashed(loadFromImage texture)");
+		//std::cout << HP;
+		return HP;
 	}
-	IncludeFilesObj()
-	{}
+	void set_HP(int HP_)
+	{
+		HP = HP_;
+	}
+	bool get_life()
+	{
+		return life;
+	}
+	void set_life(bool life_)
+	{
+		life = life_;
+	}
+	int is_alive()
+	{
+		if (HP <= 0)
+			return 0;
+		else return 1;
+	}
 
-	// Сеттеры и геттеры
 	float get_wight()
 	{
 		return wight;
@@ -279,232 +348,27 @@ public:
 	{
 		texture_attack = texture_attack_;
 	}
-	void set_sprite_attack(sf::Sprite sprite_attack_)
-	{
-		sprite_attack = sprite_attack_;
-	}
 };
 
-class PhysicObj
+//example
+class Bullet : public GraphObj
 {
-protected:
-	float X, Y;
+	//example
 public:
-	PhysicObj(float X_, float Y_)
-	{
-		X = X_;//ph
-		Y = Y_;//ph
-	}
-	PhysicObj()
+	Bullet()
 	{}
-	//Обновление физики
-	//special functions
-	virtual void update_phys_spec(float time, GameObject * game_obj_array[], map &Map);
-	void update_phys_gen(float time, GameObject * game_obj_array[], map &Map);
-	void update_phys(float time, GameObject * game_obj_array[], map &Map);
-	// Сеттеры и геттеры
-	float get_X()
-	{
-		//X = sprite.getPosition().x;
-		return X;
-	}
-	float get_Y()
-	{
-		//Y = sprite.getPosition().y;
-		return Y;
-	}
-	void set_X(float X_)
-	{
-		X = X_;
-	}
-	void set_Y(float Y_)
-	{
-		Y = Y_;
-	}
 };
 
-class GameLogicObj
-{
-protected:
-	bool life;
-	int HP;
-public:
-	GameLogicObj()
-	{
-		HP = 100;//log
-		life = true;//log
-	}
-
-	//special functions
-	virtual void update_game_logic_spec(float time, GameObject * game_obj_array[], map &Map);
-	//general functions
-	void update_game_logic_gen(float time, GameObject * game_obj_array[], map &Map);
-	void update_game_logic(float time, GameObject * game_obj_array[], map &Map);
-	// Сеттеры и геттеры
-	int get_HP()
-	{
-		//std::cout << HP;
-		return HP;
-	}
-	void set_HP(int HP_)
-	{
-		HP = HP_;
-	}
-	bool get_life()
-	{
-		return life;
-	}
-	void set_life(bool life_)
-	{
-		life = life_;
-	}
-	int is_alive()
-	{
-		if (HP <= 0)
-			return 0;
-		else return 1;
-	}
-};
-
-class GameObject :public IncludeFilesObj, public PhysicObj, public GraphObj, public GameLogicObj
-{
-public:
-	//Здесь ОБЯЗАТЕЛЬНО вызывать апдеты от this, посколкьу если вызывать от PhysicObj и GraphObj,
-	//тогда будет вызван тот апдет, который и прописан в этих классах
-	GameObject(std::string file_name_, std::string file_name_attack_, float X_, float Y_, float wight_, float height_, float wight_attack_, float height_attack_, int number_of_image_, int number_of_attack_image_, double coeff_, double coeff_attack_) :
-		IncludeFilesObj(file_name_, file_name_attack_, wight_, height_, wight_attack_, height_attack_, number_of_image_, number_of_attack_image_),
-		GraphObj(coeff_, coeff_attack_),
-		PhysicObj(X_, Y_)
-	{
-		sprite.setPosition(X_, Y_);
-		sprite.setTextureRect(sf::IntRect(0, 0, wight_, height_));
-
-		sprite_attack.setPosition(X_, Y_);
-		sprite_attack.setTextureRect(sf::IntRect(0, 0, wight_, height_));
-	}
-	GameObject() :IncludeFilesObj(), PhysicObj(), GraphObj(), GameLogicObj()
-	{}
-
-	void update(float time, GameObject *game_obj_array[], map &Map)
-	{
-		update_phys(time, game_obj_array, Map);
-		update_graph(time, game_obj_array, Map);
-		update_game_logic(time, game_obj_array, Map);
-	}
-
-	//Отрисовать!!!!!!!!!
-	//ex
-	/*void draw_dinamic_array(sf::RenderWindow &window)
-	{
-		window.clear();
-		for (int i = 0; i < OBJ_ARRAY_CAPACITY; i++)
-			window.draw(sprite);
-		window.display();
-	}*/
-};
-
-class Character : public GameObject
-{
-public:
-	//Player::Player(std::string file_name_, std::string file_name_attack_, float X_, float Y_, float wight_, float height_, float wight_attack_, float height_attack_, int number_of_image_, int number_of_attack_image_, double coeff_, double coeff_attack_)
-	//FirstEnemy::FirstEnemy(std::string File_name_, std::string File_name_attack_, float X_, float Y_, float wight_, float height_, float wight_attack_, float height_attack_, int NumOfImg_, int NumOfAttackImg_, double Coeff_, double Coeff_attack_)
-	Character(std::string file_name_, std::string file_name_attack_, float X_, float Y_, float wight_, float height_, float wight_attack_, float height_attack_, int number_of_image_, int number_of_attack_image_, double coeff_, double coeff_attack_) :
-		GameObject(file_name_, file_name_attack_, X_, Y_, wight_, height_, wight_attack_, height_attack_, number_of_image_, number_of_attack_image_, coeff_, coeff_attack_)
-	{}
-	Character() : GameObject()
-	{}
-	
-	// The hero walks only on the map
-	void map_limit(int width_of_map_, int height_of_map_)
-	{
-		X = sprite.getPosition().x;
-		Y = sprite.getPosition().y;
-		if ((X < 0) && (Y < 0))
-			sprite.setPosition(0, 0);
-		else if (X < 0)
-			sprite.setPosition(0, Y);
-		else if (Y < 0)
-			sprite.setPosition(X, 0);
-
-		if ((X > MAP_TILESET_WIDHT * (width_of_map_ - 2)) && (Y > MAP_TILESET_WIDHT * (height_of_map_ - 2)))
-			sprite.setPosition(MAP_TILESET_WIDHT * (width_of_map_ - 2), MAP_TILESET_WIDHT * (height_of_map_ - 2));
-		else if (X > MAP_TILESET_WIDHT * (width_of_map_ - 2))
-			sprite.setPosition(MAP_TILESET_WIDHT * (width_of_map_ - 2), Y);
-		else if (Y > MAP_TILESET_WIDHT * (height_of_map_ - 2))
-			sprite.setPosition(X, MAP_TILESET_WIDHT * (height_of_map_ - 2));
-	}
-	void no_way_communic_rectangle(sf::RectangleShape shape, float time)
-	{
-		//Data of character
-		sf::FloatRect spriteBounds = sprite.getGlobalBounds();
-		//Data of rectangle
-		sf::FloatRect shapeBounds = shape.getGlobalBounds();
-
-		if (spriteBounds.intersects(shapeBounds))
-		{
-			if (hero_direction == LEFT)
-				sprite.move(speed*time, 0);
-			if (hero_direction == RIGHT)
-				sprite.move(-speed * time, 0);
-			if (hero_direction == UP)
-				sprite.move(0, speed*time);
-			if (hero_direction == DOWN)
-				sprite.move(0, -speed * time);
-		}
-	}
-	void no_way_communic_circle(sf::CircleShape shape, float time)
-	{
-		//Data of character
-		sf::FloatRect spriteBounds = sprite.getGlobalBounds();
-		//Data of rectangle
-		sf::FloatRect shapeBounds = shape.getGlobalBounds();
-
-		if (spriteBounds.intersects(shapeBounds))
-		{
-			if (hero_direction == LEFT)
-				sprite.move(speed*time, 0);
-			if (hero_direction == RIGHT)
-				sprite.move(-speed * time, 0);
-			if (hero_direction == UP)
-				sprite.move(0, speed*time);
-			if (hero_direction == DOWN)
-				sprite.move(0, -speed * time);
-		}
-	}
-	// Move rectangles
-	sf::RectangleShape move_rectangle_communic(sf::RectangleShape shape, float time)
-	{
-		//CharSpeed = CHAR_SPEED;	
-		//Data of character
-		sf::FloatRect spriteBounds = sprite.getGlobalBounds();
-		//Data of rectangle
-		sf::FloatRect shapeBounds = shape.getGlobalBounds();
-
-		if (spriteBounds.intersects(shapeBounds))
-		{
-			if (hero_direction == LEFT)
-				shape.move(-speed * time, 0);
-			if (hero_direction == RIGHT)
-				shape.move(speed * time, 0);
-			if (hero_direction == UP)
-				shape.move(0, -speed * time);
-			if (hero_direction == DOWN)
-				shape.move(0, speed * time);
-		}
-		return shape;
-	}
-};
-
-class Player : public Character
+class Player : public GraphObj
 {
 public:
 	//Constructor:
 	Player(std::string file_name_, std::string file_name_attack_, float X_, float Y_, float wight_, float height_, float wight_attack_, float height_attack_, int number_of_image_, int number_of_attack_image_, double coeff_, double coeff_attack_) :
-		Character(file_name_, file_name_attack_, X_, Y_, wight_, height_, wight_attack_, height_attack_, number_of_image_, number_of_attack_image_, coeff_, coeff_attack_)
+		GraphObj(file_name_, file_name_attack_, X_, Y_, wight_, height_, wight_attack_, height_attack_, number_of_image_, number_of_attack_image_, coeff_, coeff_attack_)
 	{}
-	Player() : Character()
+	Player() : GraphObj()
 	{}
-	
+
 	//Keyboard:
 	void keyboard(float time)
 	{
@@ -592,52 +456,129 @@ public:
 	{
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::X))
 			switch (hero_direction)
-		{
-		case LEFT:
-		{
-			sprite.setTexture(texture_attack);
-			current_frame_attack += coeff_attack * time;
-			if (current_frame_attack > number_of_attack_image) current_frame_attack -= number_of_attack_image;
-			sprite.setTextureRect(sf::IntRect(int(current_frame_attack) * wight_attack, height_attack, wight_attack, height_attack));
-			break;
-		}
-		case RIGHT:
-		{
-			sprite.setTexture(texture_attack);
-			current_frame_attack += coeff_attack * time;
-			if (current_frame_attack > number_of_attack_image) current_frame_attack -= number_of_attack_image;
-			sprite.setTextureRect(sf::IntRect(int(current_frame_attack) * wight_attack, 2 * height_attack, wight_attack, height_attack));
-			break;
-		}
-		case UP:
-		{
-			sprite.setTexture(texture_attack);
-			current_frame_attack += coeff_attack * time;
-			if (current_frame_attack > number_of_attack_image) current_frame_attack -= number_of_attack_image;
-			sprite.setTextureRect(sf::IntRect(int(current_frame_attack) * wight_attack, 3 * height_attack, wight_attack, height_attack));
-			break;
-		}
-		case DOWN:
-		{
-			sprite.setTexture(texture_attack);
-			current_frame_attack += coeff_attack * time;
-			if (current_frame_attack > number_of_attack_image) current_frame_attack -= number_of_attack_image;
-			sprite.setTextureRect(sf::IntRect(int(current_frame_attack) * wight_attack, 0 * height_attack, wight_attack, height_attack));
-			break;
-		}
-		}
+			{
+			case LEFT:
+			{
+				sprite.setTexture(texture_attack);
+				current_frame_attack += coeff_attack * time;
+				if (current_frame_attack > number_of_attack_image) current_frame_attack -= number_of_attack_image;
+				sprite.setTextureRect(sf::IntRect(int(current_frame_attack) * wight_attack, height_attack, wight_attack, height_attack));
+				break;
+			}
+			case RIGHT:
+			{
+				sprite.setTexture(texture_attack);
+				current_frame_attack += coeff_attack * time;
+				if (current_frame_attack > number_of_attack_image) current_frame_attack -= number_of_attack_image;
+				sprite.setTextureRect(sf::IntRect(int(current_frame_attack) * wight_attack, 2 * height_attack, wight_attack, height_attack));
+				break;
+			}
+			case UP:
+			{
+				sprite.setTexture(texture_attack);
+				current_frame_attack += coeff_attack * time;
+				if (current_frame_attack > number_of_attack_image) current_frame_attack -= number_of_attack_image;
+				sprite.setTextureRect(sf::IntRect(int(current_frame_attack) * wight_attack, 3 * height_attack, wight_attack, height_attack));
+				break;
+			}
+			case DOWN:
+			{
+				sprite.setTexture(texture_attack);
+				current_frame_attack += coeff_attack * time;
+				if (current_frame_attack > number_of_attack_image) current_frame_attack -= number_of_attack_image;
+				sprite.setTextureRect(sf::IntRect(int(current_frame_attack) * wight_attack, 0 * height_attack, wight_attack, height_attack));
+				break;
+			}
+			}
 	}
 	void make_standart_speed()
 	{
 		if ((speed) && (!sf::Keyboard::isKeyPressed(sf::Keyboard::A)))
 			speed = CHAR_SPEED;
 	}
+	// The hero walks only on the map
+	void map_limit(int width_of_map_, int height_of_map_)
+	{
+		float curr_X = sprite.getPosition().x;
+		float curr_Y = sprite.getPosition().y;
+		if ((curr_X < 0) && (curr_Y < 0))
+			sprite.setPosition(0, 0);
+		else if (curr_X < 0)
+			sprite.setPosition(0, curr_Y);
+		else if (curr_Y < 0)
+			sprite.setPosition(curr_X, 0);
+
+		if ((curr_X > MAP_TILESET_WIDHT * (width_of_map_ - 2)) && (curr_Y > MAP_TILESET_WIDHT * (height_of_map_ - 2)))
+			sprite.setPosition(MAP_TILESET_WIDHT * (width_of_map_ - 2), MAP_TILESET_WIDHT * (height_of_map_ - 2));
+		else if (curr_X > MAP_TILESET_WIDHT * (width_of_map_ - 2))
+			sprite.setPosition(MAP_TILESET_WIDHT * (width_of_map_ - 2), curr_Y);
+		else if (curr_Y > MAP_TILESET_WIDHT * (height_of_map_ - 2))
+			sprite.setPosition(curr_X, MAP_TILESET_WIDHT * (height_of_map_ - 2));
+	}
+	void no_way_communic_rectangle(sf::RectangleShape shape, float time)
+	{
+		//Data of character
+		sf::FloatRect spriteBounds = sprite.getGlobalBounds();
+		//Data of rectangle
+		sf::FloatRect shapeBounds = shape.getGlobalBounds();
+
+		if (spriteBounds.intersects(shapeBounds))
+		{
+			if (hero_direction == LEFT)
+				sprite.move(speed*time, 0);
+			if (hero_direction == RIGHT)
+				sprite.move(-speed * time, 0);
+			if (hero_direction == UP)
+				sprite.move(0, speed*time);
+			if (hero_direction == DOWN)
+				sprite.move(0, -speed * time);
+		}
+	}
+	void no_way_communic_circle(sf::CircleShape shape, float time)
+	{
+		//Data of character
+		sf::FloatRect spriteBounds = sprite.getGlobalBounds();
+		//Data of rectangle
+		sf::FloatRect shapeBounds = shape.getGlobalBounds();
+
+		if (spriteBounds.intersects(shapeBounds))
+		{
+			if (hero_direction == LEFT)
+				sprite.move(speed*time, 0);
+			if (hero_direction == RIGHT)
+				sprite.move(-speed * time, 0);
+			if (hero_direction == UP)
+				sprite.move(0, speed*time);
+			if (hero_direction == DOWN)
+				sprite.move(0, -speed * time);
+		}
+	}
+	// Move rectangles
+	sf::RectangleShape move_rectangle_communic(sf::RectangleShape shape, float time)
+	{
+		//CharSpeed = CHAR_SPEED;	
+		//Data of character
+		sf::FloatRect spriteBounds = sprite.getGlobalBounds();
+		//Data of rectangle
+		sf::FloatRect shapeBounds = shape.getGlobalBounds();
+
+		if (spriteBounds.intersects(shapeBounds))
+		{
+			if (hero_direction == LEFT)
+				shape.move(-speed * time, 0);
+			if (hero_direction == RIGHT)
+				shape.move(speed * time, 0);
+			if (hero_direction == UP)
+				shape.move(0, -speed * time);
+			if (hero_direction == DOWN)
+				shape.move(0, speed * time);
+		}
+		return shape;
+	}
 
 	//Собственно апдейты
-	virtual void update_phys_spec(float time, GameObject * game_obj_array[], map &Map) override
-	{}
 
-	virtual void update_graph_spec(float time, GameObject * game_obj_array[], map &Map) override
+	virtual void update_graph(float time, GraphObj *graph_obj_array[], map &Map) override
 	{
 		make_standart_speed();
 		keyboard(time);
@@ -645,21 +586,18 @@ public:
 		close_in_fight(time);
 		map_limit(Map.widthOfMap, Map.heightOfMap);
 	}
-
-	virtual void update_game_logic_spec(float time, GameObject * game_obj_array[], map &Map) override
-	{};
 };
 
-class FirstEnemy : public Character
+class FirstEnemy : public GraphObj
 {
 public:
 	//Constructor:
 	FirstEnemy(std::string file_name_, std::string file_name_attack_, float X_, float Y_, float wight_, float height_, float wight_attack_, float height_attack_, int number_of_image_, int number_of_attack_image_, double coeff_, double coeff_attack_) :
-		Character(file_name_, file_name_attack_, X_, Y_, wight_, height_, wight_attack_, height_attack_, number_of_image_, number_of_attack_image_, coeff_, coeff_attack_)
+		GraphObj(file_name_, file_name_attack_, X_, Y_, wight_, height_, wight_attack_, height_attack_, number_of_image_, number_of_attack_image_, coeff_, coeff_attack_)
 	{
 		interrapted = 0;// en
 	}
-	FirstEnemy() : Character()
+	FirstEnemy() : GraphObj()
 	{}
 
 	void move_to_aim(float time, float START_X, float START_Y, float FINISH_X, float FINISH_Y)
@@ -702,14 +640,14 @@ public:
 	void behaviour(float time, sf::Sprite player_sprite, map &Map)
 	{
 		sprite.setTexture(texture);
-		X = sprite.getPosition().x;
-		Y = sprite.getPosition().y;
+		float curr_X = sprite.getPosition().x;
+		float curr_Y = sprite.getPosition().y;
 		speed = CHAR_SPEED;
 		sf::FloatRect sprite_bounds = sprite.getGlobalBounds();
 		sf::FloatRect player_sprite_bounds = player_sprite.getGlobalBounds();
 		if ((!interrapted) && (!sprite_bounds.intersects(player_sprite_bounds)))
 		{
-			if ((Y <= MAP_TILESET_WIDHT * (Map.heightOfMap - 2)) && (Y >= 0) && (hero_direction == DOWN))
+			if ((curr_Y <= MAP_TILESET_WIDHT * (Map.heightOfMap - 2)) && (curr_Y >= 0) && (hero_direction == DOWN))
 			{
 				hero_direction = DOWN;
 				current_frame += coeff * time;
@@ -717,7 +655,7 @@ public:
 				sprite.setTextureRect(sf::IntRect(int(current_frame) * wight, 0 * height, wight, height));
 				sprite.move(0, speed * time);
 			}
-			else if ((Y <= MAP_TILESET_WIDHT * (Map.heightOfMap - 2)) && (Y >= 0) && (hero_direction == UP))
+			else if ((curr_Y <= MAP_TILESET_WIDHT * (Map.heightOfMap - 2)) && (curr_Y >= 0) && (hero_direction == UP))
 			{
 				hero_direction = UP;
 				current_frame += coeff * time;
@@ -725,7 +663,7 @@ public:
 				sprite.setTextureRect(sf::IntRect(int(current_frame) * wight, 3 * height, wight, height));
 				sprite.move(0, -speed * time);
 			}
-			else if (Y > MAP_TILESET_WIDHT * (Map.heightOfMap - 2))
+			else if (curr_Y > MAP_TILESET_WIDHT * (Map.heightOfMap - 2))
 			{
 				hero_direction = UP;
 				current_frame += coeff * time;
@@ -733,7 +671,7 @@ public:
 				sprite.setTextureRect(sf::IntRect(int(current_frame) * wight, 3 * height, wight, height));
 				sprite.move(0, -2 * speed * time);
 			}
-			else if (Y < 0)
+			else if (curr_Y < 0)
 			{
 				hero_direction = DOWN;
 				current_frame += coeff * time;
@@ -906,64 +844,202 @@ public:
 	}
 
 	//Собственно апдейты
-	virtual void update_phys_spec(float time, GameObject * game_obj_array[], map &Map) override
-	{}
-
-	virtual void update_graph_spec(float time, GameObject * game_obj_array[], map &Map) override
+	virtual void update_graph(float time, GraphObj *graph_obj_array[], map &Map) override
 	{
-		behaviour(time, game_obj_array[0]->get_sprite(), Map);
-		fight_if_close(time, game_obj_array[0]->get_sprite());
+		behaviour(time, graph_obj_array[0]->get_sprite(), Map);
+		fight_if_close(time, graph_obj_array[0]->get_sprite());
 	}
-
-	virtual void update_game_logic_spec(float time, GameObject * game_obj_array[], map &Map) override
-	{};
-
 };
 
-class ManagerUpdateGameObj
+class ManagerUpdate
 {
 public:
-	GameObject * game_obj_array[OBJ_ARRAY_CAPACITY] = {};
+	PhysicCount phys_count;
+	GraphObj *graph_obj_array[OBJ_ARRAY_CAPACITY] = {};
 	map Map;
-	ManagerUpdateGameObj(GameObject *game_obj_array_[], map &Map_)
+	sf::Event event; //ex
+					 //ex
+	ManagerUpdate(GraphObj *graph_obj_array_[], PhysicObj *phys_obj_array_[],map &Map_)
 	{
 		for (int i = 0; i < OBJ_ARRAY_CAPACITY; i++)
 		{
-			game_obj_array[i] = game_obj_array_[i];
+			graph_obj_array[i] = graph_obj_array_[i];
+		}
+		for (int i = 0; i < PHYS_OBJ_ARRAY_CAPACITY; i++)
+		{
+			phys_count.phys_obj_array[i] = phys_obj_array_[i];
 		}
 		Map = Map_;
 	}
-	//ex
-	void run_update(float time, sf::Clock &clock, sf::View &view)
+	/////////////////////////Working with the screnn////////////////////////////
+	void view_treatment(float X, float Y, float wight, float height, sf::View &view)
+	{
+		positionScreen.x = X + wight - (dimensionScreenX / 2);
+		positionScreen.y = Y + height - (dimensionScreenY / 2);
+
+		//Checking the exit of the character for half the screen
+		if (positionScreen.x < 0)
+			positionScreen.x = 0;
+		if (positionScreen.y < 0)
+			positionScreen.y = 0;
+		//Change the appearance of the screen
+		view.reset(sf::FloatRect(positionScreen.x, positionScreen.y, dimensionScreenX, dimensionScreenY));
+	}
+	void zoom_treatment(int ZoomValue, sf::View &view)
+	{
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Dash))
+			view.setSize(dimensionScreenX += ZoomValue, dimensionScreenY += ZoomValue);
+		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Equal))
+			view.setSize(dimensionScreenX -= ZoomValue, dimensionScreenY -= ZoomValue);
+		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num0))
+		{
+			dimensionScreenX = int(DIMENSION_SCREEN_X);
+			dimensionScreenY = int(DIMENSION_SCREEN_Y);
+			view.setSize(dimensionScreenX, dimensionScreenY);
+		}
+
+		//Check to not increase the image too much
+		if (dimensionScreenX < DIMENSION_SCREEN_X - DELTA_DIMENSION_INC)
+		{
+			dimensionScreenX = DIMENSION_SCREEN_X - DELTA_DIMENSION_INC;
+			dimensionScreenY = DIMENSION_SCREEN_Y - DELTA_DIMENSION_INC;
+		}
+
+		//Check to not too reduce the image
+		if (dimensionScreenX > DIMENSION_SCREEN_X + DELTA_DIMENSION_DEC)
+		{
+			dimensionScreenX = DIMENSION_SCREEN_X + DELTA_DIMENSION_DEC;
+			dimensionScreenY = DIMENSION_SCREEN_Y + DELTA_DIMENSION_DEC;
+		}
+	}
+	int CreateMainWindow(sf::RenderWindow &window, sf::Texture &texture, sf::Sprite &img_sprite, sf::Font &font, sf::Text &text, sf::Music &music)
+	{
+		// Set the Icon
+		sf::Image icon;
+		if (icon.loadFromFile("icon.png") == false)
+		{
+			assert(!"CreateMainWindow is crashed(loadFromFile icon)");
+			return EXIT_FAILURE;
+		}
+
+		window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
+
+		// Load a sprite to display
+		if (texture.loadFromFile("cute_image.jpg") == false)
+		{
+			assert(!"CreateMainWindow is crashed(loadFromFile texture)");
+			return EXIT_FAILURE;
+		}
+
+		img_sprite.setTexture(texture);
+
+		// Create a graphical text to display
+		if (!font.loadFromFile("sansation.ttf"))
+		{
+			assert(!"CreateMainWindow is crashed(loadFromFile font)");
+			return EXIT_FAILURE;
+		}
+
+		text.setFont(font);
+		text.setString("Click to play");
+		text.setCharacterSize(50);
+		text.setFillColor(sf::Color::White);
+		text.setPosition(DIMENSION_SCREEN_X / 2 - 70, DIMENSION_SCREEN_Y / 2 - 20);
+
+		// Load a music to play
+		if (!music.openFromFile("nice_music.ogg"))
+		{
+			assert(!"CreateMainWindow is crashed(loadFromFile music)");
+			return EXIT_FAILURE;
+		}
+
+		return EXIT_SUCCESS;
+	}
+	int LaunchMainWindow(sf::RenderWindow &window, sf::Text &text, const sf::Event &event)
+	{
+		// Update mouse coordinates
+		sf::Vector2i PixelPos = sf::Mouse::getPosition(window);
+		sf::Vector2f GamePos = window.mapPixelToCoords(PixelPos);
+
+		if (event.type == sf::Event::MouseButtonPressed)
+		{
+			std::cout << "isClicked1!/n";
+			if (event.mouseButton.button == sf::Mouse::Left)
+			{
+				if (text.getGlobalBounds().contains(GamePos.x, GamePos.y))
+				{
+					std::cout << "isClicked1!/n";
+					clamped_on_text = true;
+					text.setCharacterSize(46);
+					text.setFillColor(sf::Color::Green);
+					text.move(2, 2);
+				}
+			}
+		}
+		else if (event.type == sf::Event::MouseButtonReleased)
+			if (event.mouseButton.button == sf::Mouse::Left)
+			{
+				if (text.getGlobalBounds().contains(GamePos.x, GamePos.y) || clamped_on_text)
+				{
+					text.setCharacterSize(50);
+					text.setFillColor(sf::Color::White);
+					text.move(-2, -2);
+					clamped_on_text = false;
+					if (text.getGlobalBounds().contains(GamePos.x, GamePos.y))
+						return ENDOFLAUNCH_SECCESS;
+				}
+			}
+
+		// Escape pressed: exit
+		if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape)
+		{
+			window.close();
+			return ENDOFLAUNCH_CLOSED;
+		}
+		return NOTENDOFLAUNCH;
+
+	}
+	int CreateRun(sf::Font &font, sf::Text &text)
+	{
+		//Creating a font
+		if (font.loadFromFile("sansation.ttf") == false)
+		{
+			assert(!"CreateRun is crashed(loadFromFile Font)");
+			return EXIT_FAILURE;
+		}
+
+		text.setFont(font);
+		text.setCharacterSize(18);
+		text.setColor(sf::Color::Red);
+		text.setOutlineThickness(4);
+		text.setOutlineColor(sf::Color::Black);
+		text.setStyle(sf::Text::Bold);
+
+		return EXIT_SUCCESS;
+	}
+	/////////////////////////////////////////////////////////////////////////////
+	void run_update_graph(float time, sf::Clock &clock, sf::View &view)
 	{
 		time = float(clock.getElapsedTime().asMicroseconds());
 		clock.restart();
 		time = time / 16000;
 		for (int i = 0; i < OBJ_ARRAY_CAPACITY; i++)
 		{
-			game_obj_array[i]->update(time, game_obj_array, Map);
+			graph_obj_array[i]->update_graph(time, graph_obj_array, Map);
 		}
 		zoom_treatment(ZOOM_VALUE, view);
-		view_treatment(game_obj_array[0]->get_sprite().getPosition().x, game_obj_array[0]->get_sprite().getPosition().y,
-			game_obj_array[0]->get_wight(), game_obj_array[0]->get_height(), view);
+		view_treatment(graph_obj_array[0]->get_sprite().getPosition().x, graph_obj_array[0]->get_sprite().getPosition().y,
+			graph_obj_array[0]->get_wight(), graph_obj_array[0]->get_height(), view);
 	}
 	void draw_all(sf::RenderWindow &window)
 	{
 		for (int i = 0; i < OBJ_ARRAY_CAPACITY; i++)
 		{
-			window.draw(game_obj_array[i]->get_sprite());
+			window.draw(graph_obj_array[i]->get_sprite());
 		}
 	}
-};
-
-class ManagerEventLoop
-{
-public:
-	sf::Event event; //ex
-	//ex
-	int main_loop(GameObject *mass_[], sf::String *map1_string_, map &Map)
+	int main_loop(sf::String *map1_string_)
 	{
-		ManagerUpdateGameObj manager_update(mass_, Map);
 		//printf("%s\n", Map.mapFile.getData() + 3);
 		sf::RenderWindow window(sf::VideoMode(DIMENSION_SCREEN_X, DIMENSION_SCREEN_Y), "MINER_INDI"/*,Style::Fullscreen*/);
 
@@ -1038,8 +1114,10 @@ public:
 				window.clear();
 
 				Map.DrawingMap(window, map1_string_);
-				manager_update.run_update(time, clock, view);
-				manager_update.draw_all(window);
+
+				phys_count.physic_count(time, Map);
+				run_update_graph(time, clock, view);
+				draw_all(window);
 				window.setView(view);
 
 				//Draw the text
@@ -1051,16 +1129,14 @@ public:
 	}
 };
 
-//Лучше сделать один базовый класс(а не так что есть ObjectStatic и ObjectDinamic).
-//В противном случае придется писать обработчики начала уровня отедльно для каждого,
-//потому что они содеожать одинаковые элементы, а если обработчик наследуется сразу от обоих,
-//то возникает ошибка компиляции. Не понятно с каким конкретно элементов мы работаем.
-
 //Общее правило: Класс игрока будем класть в первую ячейку массива объектов
-class ManagerLevel1Configuration : public GameObject
+class ManagerLevel1Configuration
 {
 public:
-	GameObject * game_obj_array[OBJ_ARRAY_CAPACITY];
+	//Поменять на GraphObj
+	GraphObj * graph_obj_array[OBJ_ARRAY_CAPACITY];
+	PhysicObj * phys_obj_array[PHYS_OBJ_ARRAY_CAPACITY];
+	
 	sf::String TileMap[HEIGHT_MAP_1] =
 	{ "0000000000000000000000000000000000000000",
 		"0                                      0",
@@ -1092,20 +1168,33 @@ public:
 	Player player;
 	FirstEnemy snake;
 	FirstEnemy gorilla;
+	PhysicObj bullet_phys;
+	Bullet bullet;
 	ManagerLevel1Configuration()
 	{
 		snake = FirstEnemy("snake.png", "snake.png", 400, 50, 64, 64, 64, 64, 4, 0, COEFF_SPEED, COEFF_ATTACK_SPEED);
 		gorilla = FirstEnemy("image.png", "image.png", 600, 50, 80, 78, 80, 78, 3, 3, COEFF_SPEED, COEFF_ATTACK_SPEED);
 		player = Player("gorilla.png", "gorilla_fight.png", 50, 50, 80, 80, 80, 80, 4, 4, COEFF_SPEED, COEFF_ATTACK_SPEED);
+		bullet = Bullet();
 		Map = map("map.png", WIDHT_MAP_1, HEIGHT_MAP_1);
-		game_obj_array[0] = &player;
-		game_obj_array[1] = &snake;
-		game_obj_array[2] = &gorilla;
+		graph_obj_array[0] = &player;
+		graph_obj_array[1] = &snake;
+		graph_obj_array[2] = &gorilla;
+		//graph_obj_array[3] = &bullet;
+
+		//Инициализация указателя на физику для пули
+		bullet_phys = PhysicObj(50, 50);
+		phys_obj_array[0] = &bullet_phys;
+		bullet.set_phys(phys_obj_array[0]);
 	}
 	//Функция, возвращающая массив объектов на данном уровне
-	GameObject **get_game_obj_array()
+	GraphObj **get_graph_obj_array()
 	{
-		return game_obj_array;
+		return graph_obj_array;
+	}
+	PhysicObj **get_phys_obj_array()
+	{
+		return phys_obj_array;
 	}
 	sf::String *get_tile_map_string()
 	{
@@ -1117,222 +1206,19 @@ public:
 	}
 };
 
-
-// To return the screen resolution to its original state, the "0"
-// For the acceleration of the player's character, the button "A"
-// For the player's character attack, the "X"f
-
-//ph - физика, gr - графика, log - игр. логика, inc - включаемые файлы
-
-//create a scroll screen
-
 int main()
-	{
-		GameObject **mass;
-		sf::String *map1_string;
-		map Map;
-		ManagerLevel1Configuration manager_level1;
-		mass = manager_level1.get_game_obj_array();
-		map1_string = manager_level1.get_tile_map_string();
-		Map = manager_level1.get_map();
-		ManagerEventLoop manager_event;
-		manager_event.main_loop(mass, map1_string, Map);
-		//getchar();
-		return 0;
-	}
-/////////////////////////Working with the screnn////////////////////////////
-
-int CreateMainWindow(sf::RenderWindow &window, sf::Texture &texture, sf::Sprite &img_sprite, sf::Font &font, sf::Text &text, sf::Music &music)
-	{
-		// Set the Icon
-		sf::Image icon;
-		if (icon.loadFromFile("icon.png") == false)
-		{
-			assert(!"CreateMainWindow is crashed(loadFromFile icon)");
-			return EXIT_FAILURE;
-		}
-
-		window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
-
-		// Load a sprite to display
-		if (texture.loadFromFile("cute_image.jpg") == false)
-		{
-			assert(!"CreateMainWindow is crashed(loadFromFile texture)");
-			return EXIT_FAILURE;
-		}
-
-		img_sprite.setTexture(texture);
-
-		// Create a graphical text to display
-		if (!font.loadFromFile("sansation.ttf"))
-		{
-			assert(!"CreateMainWindow is crashed(loadFromFile font)");
-			return EXIT_FAILURE;
-		}
-
-		text.setFont(font);
-		text.setString("Click to play");
-		text.setCharacterSize(50);
-		text.setFillColor(sf::Color::White);
-		text.setPosition(DIMENSION_SCREEN_X / 2 - 70, DIMENSION_SCREEN_Y / 2 - 20);
-
-		// Load a music to play
-		if (!music.openFromFile("nice_music.ogg"))
-		{
-			assert(!"CreateMainWindow is crashed(loadFromFile music)");
-			return EXIT_FAILURE;
-		}
-
-		return EXIT_SUCCESS;
-	}
-
-int LaunchMainWindow(sf::RenderWindow &window, sf::Text &text, const sf::Event &event)
-	{
-		// Update mouse coordinates
-		sf::Vector2i PixelPos = sf::Mouse::getPosition(window);
-		sf::Vector2f GamePos = window.mapPixelToCoords(PixelPos);
-
-		if (event.type == sf::Event::MouseButtonPressed)
-		{
-			std::cout << "isClicked1!/n";
-			if (event.mouseButton.button == sf::Mouse::Left)
-			{
-				if (text.getGlobalBounds().contains(GamePos.x, GamePos.y))
-				{
-					std::cout << "isClicked1!/n";
-					clamped_on_text = true;
-					text.setCharacterSize(46);
-					text.setFillColor(sf::Color::Green);
-					text.move(2, 2);
-				}
-			}
-		}
-		else if (event.type == sf::Event::MouseButtonReleased)
-			if (event.mouseButton.button == sf::Mouse::Left)
-			{
-				if (text.getGlobalBounds().contains(GamePos.x, GamePos.y) || clamped_on_text)
-				{
-					text.setCharacterSize(50);
-					text.setFillColor(sf::Color::White);
-					text.move(-2, -2);
-					clamped_on_text = false;
-					if (text.getGlobalBounds().contains(GamePos.x, GamePos.y))
-						return ENDOFLAUNCH_SECCESS;
-				}
-			}
-
-		// Escape pressed: exit
-		if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape)
-		{
-			window.close();
-			return ENDOFLAUNCH_CLOSED;
-		}
-		return NOTENDOFLAUNCH;
-
-	}
-
-int CreateRun(sf::Font &font, sf::Text &text)
-	{
-		//Creating a font
-		if (font.loadFromFile("sansation.ttf") == false)
-		{
-			assert(!"CreateRun is crashed(loadFromFile Font)");
-			return EXIT_FAILURE;
-		}
-
-		text.setFont(font);
-		text.setCharacterSize(18);
-		text.setColor(sf::Color::Red);
-		text.setOutlineThickness(4);
-		text.setOutlineColor(sf::Color::Black);
-		text.setStyle(sf::Text::Bold);
-
-		return EXIT_SUCCESS;
-	}
-
-void view_treatment(float X, float Y, float wight, float height, sf::View &view)
-	{
-		positionScreen.x = X + wight - (dimensionScreenX / 2);
-		positionScreen.y = Y + height - (dimensionScreenY / 2);
-
-		//Checking the exit of the character for half the screen
-		if (positionScreen.x < 0)
-			positionScreen.x = 0;
-		if (positionScreen.y < 0)
-			positionScreen.y = 0;
-		//Change the appearance of the screen
-		view.reset(sf::FloatRect(positionScreen.x, positionScreen.y, dimensionScreenX, dimensionScreenY));
-	}
-
-void zoom_treatment(int ZoomValue, sf::View &view)
-	{
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Dash))
-			view.setSize(dimensionScreenX += ZoomValue, dimensionScreenY += ZoomValue);
-		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Equal))
-			view.setSize(dimensionScreenX -= ZoomValue, dimensionScreenY -= ZoomValue);
-		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num0))
-		{
-			dimensionScreenX = int(DIMENSION_SCREEN_X);
-			dimensionScreenY = int(DIMENSION_SCREEN_Y);
-			view.setSize(dimensionScreenX, dimensionScreenY);
-		}
-
-		//Check to not increase the image too much
-		if (dimensionScreenX < DIMENSION_SCREEN_X - DELTA_DIMENSION_INC)
-		{
-			dimensionScreenX = DIMENSION_SCREEN_X - DELTA_DIMENSION_INC;
-			dimensionScreenY = DIMENSION_SCREEN_Y - DELTA_DIMENSION_INC;
-		}
-
-		//Check to not too reduce the image
-		if (dimensionScreenX > DIMENSION_SCREEN_X + DELTA_DIMENSION_DEC)
-		{
-			dimensionScreenX = DIMENSION_SCREEN_X + DELTA_DIMENSION_DEC;
-			dimensionScreenY = DIMENSION_SCREEN_Y + DELTA_DIMENSION_DEC;
-		}
-	}
-
-//Определния апдейтов:
-
-//Для физики:
-void PhysicObj::update_phys_spec(float time, GameObject * game_obj_array[], map &Map)
-{}
-void PhysicObj::update_phys_gen(float time, GameObject * game_obj_array[], map &Map)
 {
-	//test:
-	/*
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::R))
-	{
-		sf::Sprite sprite_temp;
-		sprite_temp = game_obj_array[0]->get_sprite();
-		sprite_temp.move(-game_obj_array[0]->get_speed() * time, 0);
-		game_obj_array[0]->set_sprite(sprite_temp);
-	}*/
-}
-void PhysicObj::update_phys(float time, GameObject * game_obj_array[], map &Map)
-{
-	update_phys_gen(time, game_obj_array, Map);
-	update_phys_spec(time, game_obj_array, Map);
-}
-
-//Для графики:
-void GraphObj::update_graph_gen(float time, GameObject * game_obj_array[], map &Map)
-{}
-void GraphObj::update_graph_spec(float time, GameObject * game_obj_array[], map &Map)
-{}
-void GraphObj::update_graph(float time, GameObject * game_obj_array[], map &Map)
-{
-	update_graph_gen(time, game_obj_array, Map);
-	update_graph_spec(time, game_obj_array, Map);
-}
-
-//Для игровой логики:
-void GameLogicObj::update_game_logic_spec(float time, GameObject * game_obj_array[], map &Map)
-{}
-void GameLogicObj::update_game_logic_gen(float time, GameObject * game_obj_array[], map &Map)
-{}
-void GameLogicObj::update_game_logic(float time, GameObject * game_obj_array[], map &Map)
-{
-	update_game_logic_gen(time, game_obj_array, Map);
-	update_game_logic_spec(time, game_obj_array, Map);
+	GraphObj **mass_graph;
+	PhysicObj **mass_phys;
+	sf::String *map1_string;
+	map Map;
+	ManagerLevel1Configuration manager_level1;
+	mass_graph = manager_level1.get_graph_obj_array();
+	mass_phys = manager_level1.get_phys_obj_array();
+	map1_string = manager_level1.get_tile_map_string();
+	Map = manager_level1.get_map();
+	ManagerUpdate manager_update(mass_graph, mass_phys, Map);
+	manager_update.main_loop(map1_string);
+	//getchar();
+	return 0;
 }
