@@ -35,7 +35,7 @@ sf::Vector2f positionScreen(0, 0);
 
 static bool clamped_on_text = false;
 
-//Линейные размеры карты
+//linear dimensions of the map
 const int HEIGHT_MAP_1 = 25;
 const int WIDHT_MAP_1 = 40;
 
@@ -68,7 +68,7 @@ map::map()
 
 void map::DrawingMap(sf::RenderWindow &window, sf::String *TileMap)
 {
-	//Если положить это в конструктор, то все ломается
+	//If we put this into the constructor, then everything breaks down
 	if (mapImage.loadFromFile(mapFile) == false)
 		assert(!"Class map was crashed(loadFormFile mapImage)");
 	mapTexture.loadFromImage(mapImage);
@@ -146,7 +146,7 @@ class PhysicCount
 {
 public:
 	PhysicObj * phys_obj_array[PHYS_OBJ_ARRAY_CAPACITY];
-	//Подсчет физики:
+	//Counting Physics:
 	void physic_count(float time, map &Map)
 	{
 		//do something
@@ -576,8 +576,6 @@ public:
 		return shape;
 	}
 
-	//Собственно апдейты
-
 	virtual void update_graph(float time, GraphObj *graph_obj_array[], map &Map) override
 	{
 		make_standart_speed();
@@ -843,7 +841,6 @@ public:
 			close_in_fight_enemy(time);
 	}
 
-	//Собственно апдейты
 	virtual void update_graph(float time, GraphObj *graph_obj_array[], map &Map) override
 	{
 		behaviour(time, graph_obj_array[0]->get_sprite(), Map);
@@ -857,6 +854,7 @@ public:
 	PhysicCount phys_count;
 	GraphObj *graph_obj_array[OBJ_ARRAY_CAPACITY] = {};
 	map Map;
+	bool level_complited;
 	sf::Event event; //ex
 					 //ex
 	ManagerUpdate(GraphObj *graph_obj_array_[], PhysicObj *phys_obj_array_[],map &Map_)
@@ -870,7 +868,10 @@ public:
 			phys_count.phys_obj_array[i] = phys_obj_array_[i];
 		}
 		Map = Map_;
+		level_complited = 0;
 	}
+	ManagerUpdate()
+	{}
 	/////////////////////////Working with the screnn////////////////////////////
 	void view_treatment(float X, float Y, float wight, float height, sf::View &view)
 	{
@@ -1047,7 +1048,8 @@ public:
 		sf::Clock clock;
 		float time = float(clock.getElapsedTime().asMicroseconds());
 
-		//Вывод картинки и текста в первое окно
+
+		// Display picture and text in the first window
 		sf::Texture texture;
 		sf::Sprite img_sprite;
 		sf::Font font;
@@ -1062,7 +1064,7 @@ public:
 		sf::Texture texture_map;
 		sf::Sprite sprite_map;
 
-		//Для того, чтобы один ращ вызвать функцию CreateRun()
+		//In order to call CreateRun () one more time,
 		int current = 0;
 		//sf::Clock clock;
 
@@ -1129,14 +1131,12 @@ public:
 	}
 };
 
-//Общее правило: Класс игрока будем класть в первую ячейку массива объектов
+// General rule: We'll put the player's class in the first cell of the array of objects
 class ManagerLevel1Configuration
 {
 public:
-	//Поменять на GraphObj
 	GraphObj * graph_obj_array[OBJ_ARRAY_CAPACITY];
 	PhysicObj * phys_obj_array[PHYS_OBJ_ARRAY_CAPACITY];
-	
 	sf::String TileMap[HEIGHT_MAP_1] =
 	{ "0000000000000000000000000000000000000000",
 		"0                                      0",
@@ -1165,12 +1165,89 @@ public:
 		"0000000000000000000000000000000000000000",
 	};
 	map Map;
+
 	Player player;
 	FirstEnemy snake;
 	FirstEnemy gorilla;
 	PhysicObj bullet_phys;
 	Bullet bullet;
 	ManagerLevel1Configuration()
+	{
+		snake = FirstEnemy("snake.png", "snake.png", 400, 50, 64, 64, 64, 64, 4, 0, COEFF_SPEED, COEFF_ATTACK_SPEED);
+		gorilla = FirstEnemy("image.png", "image.png", 600, 50, 80, 78, 80, 78, 3, 3, COEFF_SPEED, COEFF_ATTACK_SPEED);
+		player = Player("gorilla.png", "gorilla_fight.png", 50, 50, 80, 80, 80, 80, 4, 4, COEFF_SPEED, COEFF_ATTACK_SPEED);
+		bullet = Bullet();
+		Map = map("map.png", WIDHT_MAP_1, HEIGHT_MAP_1);
+		graph_obj_array[0] = &player;
+		graph_obj_array[1] = &snake;
+		graph_obj_array[2] = &gorilla;
+		//graph_obj_array[3] = &bullet;
+
+		// Initialize the physics pointer for the bullet
+		bullet_phys = PhysicObj(50, 50);
+		phys_obj_array[0] = &bullet_phys;
+		bullet.set_phys(phys_obj_array[0]);
+	}
+	// A function that returns an array of objects at a given level
+	GraphObj **get_graph_obj_array()
+	{
+		return graph_obj_array;
+	}
+	PhysicObj **get_phys_obj_array()
+	{
+		return phys_obj_array;
+	}
+	sf::String *get_tile_map_string()
+	{
+		return TileMap;
+	}
+	map get_map()
+	{
+		return Map;
+	}
+};
+
+class ManagerLevel2Configuration
+{
+public:
+	//Поменять на GraphObj
+	GraphObj * graph_obj_array[OBJ_ARRAY_CAPACITY];
+	PhysicObj * phys_obj_array[PHYS_OBJ_ARRAY_CAPACITY];
+	sf::String TileMap[HEIGHT_MAP_1] =
+	{ "0000000000000000000000000000000000000000",
+		"0                                      0",
+		"0                                      0",
+		"0                                      0",
+		"0                                      0",
+		"0                                      0",
+		"0                                      0",
+		"0                                      0",
+		"0             sssss                    0",
+		"0         ssss    ssss                 0",
+		"0      sss            sss              0",
+		"0     ss                 ss            0",
+		"0    s                     s           0",
+		"0     ss                ss             0",
+		"0      sss            sss              0",
+		"0        sss         sss               0",
+		"0           sss    ss                  0",
+		"0              ssss                    0",
+		"0                                      0",
+		"0                                      0",
+		"0                                      0",
+		"0                                      0",
+		"0                                      0",
+		"0                                      0",
+		"0000000000000000000000000000000000000000",
+	};
+	map Map;
+
+	Player player;
+	FirstEnemy snake;
+	FirstEnemy gorilla;
+	PhysicObj bullet_phys;
+	Bullet bullet;
+	ManagerLevel2Configuration()
 	{
 		snake = FirstEnemy("snake.png", "snake.png", 400, 50, 64, 64, 64, 64, 4, 0, COEFF_SPEED, COEFF_ATTACK_SPEED);
 		gorilla = FirstEnemy("image.png", "image.png", 600, 50, 80, 78, 80, 78, 3, 3, COEFF_SPEED, COEFF_ATTACK_SPEED);
@@ -1210,15 +1287,15 @@ int main()
 {
 	GraphObj **mass_graph;
 	PhysicObj **mass_phys;
-	sf::String *map1_string;
+	sf::String *map_string;
 	map Map;
 	ManagerLevel1Configuration manager_level1;
 	mass_graph = manager_level1.get_graph_obj_array();
 	mass_phys = manager_level1.get_phys_obj_array();
-	map1_string = manager_level1.get_tile_map_string();
+	map_string = manager_level1.get_tile_map_string();
 	Map = manager_level1.get_map();
 	ManagerUpdate manager_update(mass_graph, mass_phys, Map);
-	manager_update.main_loop(map1_string);
+	manager_update.main_loop(map_string);
 	//getchar();
 	return 0;
 }
